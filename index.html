@@ -1,0 +1,313 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <title>Asistente clínico con IA (demo local)</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <style>
+    body {
+      margin: 0;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background: #020617;
+      color: #e5e7eb;
+      display: flex;
+      justify-content: center;
+      padding: 20px;
+    }
+    .app {
+      width: min(1100px, 100%);
+    }
+    h1 { font-size: 20px; margin-bottom: 4px; }
+    .card {
+      background: #020617;
+      border-radius: 16px;
+      border: 1px solid #1f2937;
+      padding: 16px;
+      box-shadow: 0 20px 40px rgba(0,0,0,.4);
+    }
+    label {
+      display: block;
+      font-size: 13px;
+      margin-bottom: 4px;
+      color: #9ca3af;
+    }
+    input, textarea, select {
+      width: 100%;
+      background: #020617;
+      border-radius: 10px;
+      border: 1px solid #1f2937;
+      padding: 8px 10px;
+      color: #e5e7eb;
+      font-size: 13px;
+      outline: none;
+    }
+    input:focus, textarea:focus, select:focus {
+      border-color: #4f46e5;
+    }
+    textarea { min-height: 70px; resize: vertical; }
+    .grid-2 {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 10px;
+    }
+    .grid-1 { display: grid; gap: 8px; }
+    button {
+      border: none;
+      border-radius: 999px;
+      padding: 10px 16px;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      background: #4f46e5;
+      color: white;
+    }
+    button[disabled] {
+      opacity: .6;
+      cursor: not-allowed;
+    }
+    .top-bar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 10px;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+    .small { font-size: 12px; color: #9ca3af; }
+    .result-box {
+      margin-top: 12px;
+      border-radius: 12px;
+      border: 1px solid #1f2937;
+      padding: 10px;
+      max-height: 350px;
+      overflow: auto;
+      background: #020617;
+      font-size: 14px;
+      white-space: pre-wrap;
+    }
+    .disclaimer {
+      font-size: 11px;
+      color: #9ca3af;
+      border-top: 1px solid #1f2937;
+      margin-top: 10px;
+      padding-top: 6px;
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <h1>Asistente clínico con IA</h1>
+    <p class="small">
+      Demo educativa: NO reemplaza el juicio clínico ni una consulta médica real.
+    </p>
+
+    <div class="card">
+      <div class="top-bar">
+        <div style="flex:1">
+          <label>Clave de API de OpenAI (solo para uso local)</label>
+          <input id="apiKey" type="password" placeholder="sk-..." />
+          <div class="small">
+            No publiques esta página con tu clave. Úsala solo en tu compu.
+          </div>
+        </div>
+        <div>
+          <label>Modelo</label>
+          <select id="model">
+            <option value="gpt-4o-mini">gpt-4o-mini</option>
+            <option value="gpt-4o">gpt-4o</option>
+          </select>
+        </div>
+      </div>
+
+      <hr style="border-color:#111827; margin:10px 0" />
+
+      <div class="grid-2">
+        <div class="grid-1">
+          <label>Nombre</label>
+          <input id="nombre" />
+
+          <label>Edad</label>
+          <input id="edad" placeholder="años" />
+
+          <label>Sexo</label>
+          <select id="sexo">
+            <option value="">Seleccionar</option>
+            <option>F</option>
+            <option>M</option>
+            <option>Intersex</option>
+            <option>Otro</option>
+          </select>
+
+          <label>Motivo de consulta</label>
+          <input id="motivo" placeholder="Ej: dolor torácico, fiebre, etc." />
+
+          <label>Enfermedad actual (HPI)</label>
+          <textarea id="hpi" placeholder="Inicio, forma, curso, factores que agravan o alivian, tratamientos previos, contexto..."></textarea>
+
+          <label>Antecedentes personales y quirúrgicos</label>
+          <textarea id="antecedentes" placeholder="HTA, DM, cirugías, internaciones, EPOC, cardiopatía, etc."></textarea>
+
+          <label>Antecedentes familiares</label>
+          <textarea id="familiares" placeholder="Cardiopatía, cáncer, enfermedad hereditaria, etc."></textarea>
+
+          <label>Hábitos / Historia social</label>
+          <textarea id="social" placeholder="Tabaco (paquetes/año), alcohol, drogas, ocupación, vivienda, viajes..."></textarea>
+        </div>
+
+        <div class="grid-1">
+          <label>Medicaciones actuales</label>
+          <textarea id="medicaciones" placeholder="Nombre, dosis, frecuencia, adherencia"></textarea>
+
+          <label>Alergias</label>
+          <textarea id="alergias" placeholder="Fármacos, alimentos, látex..."></textarea>
+
+          <label>Signos vitales</label>
+          <textarea id="sv" placeholder="Temp, FC, FR, PA, SatO2, glucemia, peso, talla..."></textarea>
+
+          <label>Examen físico</label>
+          <textarea id="ef" placeholder="Hallazgos relevantes por aparatos/sistemas"></textarea>
+
+          <label>Laboratorio e imágenes</label>
+          <textarea id="labs" placeholder="Hemograma, química, marcadores, Rx, eco, TC, RM, etc."></textarea>
+
+          <label>Objetivo del análisis</label>
+          <select id="objetivo">
+            <option value="diferencial">Diagnóstico diferencial</option>
+            <option value="diagnostico_probable">Diagnóstico más probable</option>
+            <option value="plan_inicial">Plan de estudios y manejo inicial</option>
+            <option value="alertas">Banderas rojas y criterios de derivación</option>
+          </select>
+
+          <button id="btnEnviar" style="margin-top:10px;">Analizar con IA</button>
+        </div>
+      </div>
+
+      <div class="result-box" id="resultado">
+        Completa los datos y presiona “Analizar con IA”.
+      </div>
+
+      <div class="disclaimer">
+        Esta herramienta es solo educativa y de apoyo. No reemplaza evaluación presencial ni guías/protocolos locales.
+        Ante síntomas graves o banderas rojas, se debe derivar o consultar de urgencia según normas vigentes.
+      </div>
+    </div>
+  </div>
+
+  <script>
+    async function analizar() {
+      const apiKey = document.getElementById("apiKey").value.trim();
+      const model = document.getElementById("model").value;
+      const resultado = document.getElementById("resultado");
+      const btn = document.getElementById("btnEnviar");
+
+      if (!apiKey) {
+        alert("Pon tu clave de API de OpenAI.");
+        return;
+      }
+
+      // Tomamos los datos del formulario
+      const datos = {
+        nombre: document.getElementById("nombre").value,
+        edad: document.getElementById("edad").value,
+        sexo: document.getElementById("sexo").value,
+        motivo: document.getElementById("motivo").value,
+        hpi: document.getElementById("hpi").value,
+        antecedentes: document.getElementById("antecedentes").value,
+        familiares: document.getElementById("familiares").value,
+        social: document.getElementById("social").value,
+        medicaciones: document.getElementById("medicaciones").value,
+        alergias: document.getElementById("alergias").value,
+        sv: document.getElementById("sv").value,
+        ef: document.getElementById("ef").value,
+        labs: document.getElementById("labs").value,
+        objetivo: document.getElementById("objetivo").value,
+      };
+
+      // Armamos el mensaje para la IA
+      const userPrompt = `
+Eres un asistente clínico para profesionales de la salud. 
+NO das diagnósticos definitivos ni indicas tratamientos sin aclarar que se deben respetar guías y protocolos locales.
+
+Trabaja así:
+1) Haz un breve RESUMEN CLÍNICO.
+2) Da un listado de DIAGNÓSTICOS DIFERENCIALES (3–6) con probabilidad cualitativa (alta, intermedia, baja).
+3) Marca BANDERAS ROJAS y criterios de DERIVACIÓN/URGENCIA.
+4) Sugiere ESTUDIOS COMPLEMENTARIOS razonables.
+5) Sugiere un MANEJO INICIAL orientativo (farmacológico y no farmacológico), siempre aclarando que debe adaptarse a protocolos locales y a cada paciente.
+
+Datos del paciente:
+- Nombre: ${datos.nombre}
+- Edad: ${datos.edad}
+- Sexo: ${datos.sexo}
+- Motivo de consulta: ${datos.motivo}
+
+Enfermedad actual (HPI):
+${datos.hpi}
+
+Antecedentes personales y quirúrgicos:
+${datos.antecedentes}
+
+Antecedentes familiares:
+${datos.familiares}
+
+Hábitos / historia social:
+${datos.social}
+
+Medicaciones actuales:
+${datos.medicaciones}
+
+Alergias:
+${datos.alergias}
+
+Signos vitales:
+${datos.sv}
+
+Examen físico:
+${datos.ef}
+
+Laboratorio e imágenes:
+${datos.labs}
+
+Objetivo principal del análisis:
+${datos.objetivo}
+`;
+
+      resultado.textContent = "Analizando historia clínica...";
+      btn.disabled = true;
+
+      try {
+        const response = await fetch("https://api.openai.com/v1/chat/completions", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "Authorization": "Bearer " + apiKey
+          },
+          body: JSON.stringify({
+            model: model,
+            messages: [
+              { role: "system", content: "Responde siempre en español de Argentina, de forma clara y estructurada, para un profesional de la salud." },
+              { role: "user", content: userPrompt }
+            ]
+          })
+        });
+
+        if (!response.ok) {
+          const errorText = await response.text();
+          resultado.textContent = "Error: " + errorText;
+          return;
+        }
+
+        const data = await response.json();
+        const texto = data.choices?.[0]?.message?.content || "(Sin respuesta)";
+        resultado.textContent = texto;
+      } catch (err) {
+        resultado.textContent = "Error al llamar a la API: " + err;
+      } finally {
+        btn.disabled = false;
+      }
+    }
+
+    document.getElementById("btnEnviar").addEventListener("click", analizar);
+  </script>
+</body>
+</html>
